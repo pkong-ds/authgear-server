@@ -1,4 +1,5 @@
 name: Signup with secondary sms oob otp setup
+focus: true
 authgear.yaml:
   override: |
     authentication_flow:
