@@ -4,6 +4,7 @@
   * [Old Configuration](#old-configuration)
   * [New Configuration](#new-configuration)
     + [authgear.yaml](#authgearyaml)
+      - [Risk level `mode`](#risk-level-mode)
     + [authgear.secrets.yaml](#authgearsecretsyaml)
   * [Authentication Flow](#authentication-flow)
     + [Bot protection in Authentication Flow configuration](#bot-protection-in-authentication-flow-configuration)
@@ -56,6 +57,18 @@ bot_protection:
       risk_level:
         high_if_gte: 0.7
         medium_if_gte: 0.5
+  authentication_flow:
+    signup_or_login:
+      mode: "always" # "never" | "always" | "risk_level_medium" | "risk_level_high"
+    account_recovery:
+      mode: "always" # "never" | "always" | "risk_level_medium" | "risk_level_high"
+  authenticator:
+    password:
+      mode: "always" # "never" | "always" | "risk_level_medium" | "risk_level_high"
+    oob_otp_email:
+      mode: "always" # "never" | "always" | "risk_level_medium" | "risk_level_high"
+    oob_otp_sms:
+      mode: "always" # "never" | "always" | "risk_level_medium" | "risk_level_high"
 ```
 
 - `bot_protection.enabled`: If it is true, the new configuration is used.
@@ -67,12 +80,27 @@ bot_protection:
 - `bot_protection.risk_assessment.provider.type`: Required. The type of the risk assessment provider. Valid values are `recaptchav3`.
 - `bot_protection.risk_assessment.provider.risk_level.high_if_gte`: Required. A floating number. If the provider-specific score is greater than or equal to this number, then the risk level is high. Otherwise, it is medium or low.
 - `bot_protection.risk_assessment.provider.risk_level.medium_if_gte`: Required. A floating number. If the provider-specific score is greater than or equal to this number, then the risk level is medium. Otherwise, it is low.
+- `bot_protection.authentication_flow.signup_or_login.mode`: Optional. [Risk level mode](#risk-level-mode). Default `never`. If set, will set accordingly in `signup`, `login`, `signup_login`, `promote` flows, step `identify`, branch `login_id` in authentication flow.
+- `bot_protection.authentication_flow.account_recovery.mode`: Optional. [Risk level mode](#risk-level-mode). Default `never`. If set, will set accordingly in `account_recovery` flow, step `identify`, all branches in authentication flow.
+- `bot_protection.authenticator.password`: Optional. [Risk level mode](#risk-level-mode). Default `never`. If set, will set accordingly in `login` flows, step `authenticate`, branch `primary_password`, `secondary_password` in authentication flow.
+- `bot_protection.authenticator.oob_otp_email`: Optional. [Risk level mode](#risk-level-mode). Default `never`. If set, will set accordingly in `login` flows, step `authenticate`, branch `primary_oob_otp_email`, `secondary_oob_otp_email` in authentication flow.
+- `bot_protection.authenticator.oob_otp_sms`: Optional. [Risk level mode](#risk-level-mode). Default `never`. If set, will set accordingly in `login` flows, step `authenticate`, branch `primary_oob_otp_sms`, `secondary_oob_otp_sms` in authentication flow.
 
 Type specific fields:
 
 - `bot_protection.provider.type=cloudflare.site_key`: Required. The site key of Cloudflare Turnstile.
 - `bot_protection.provider.type=recaptchav2.site_key`: Required. The site key of reCAPTCHA v2.
 - `bot_protection.risk_assessment.provider.type=recaptchav3.site_key`: Required. The site key of reCAPTCHA v3.
+
+#### Risk level `mode`
+
+| Value               | Effect                                                                                                                                                                                                                                                                                                                                                   |
+|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `never`             | Bot protection is never required. It is the default.                                                                                                                                                                                                                                                                                                     |
+| `always`            | Bot protection is always required. Risk level is ignored. Note this is equivalent to  `risk_level_low`                                                                                                                                                                                                                                                   |
+| `risk_level_medium` | Bot protection is required when the risk level obtained by risk assessment is medium or above. If risk assessment is not enabled, then it means `always`. If risk assessment is service unavailable, then it means `always`. There is no `risk_level_low` because risk level is always low, medium, or high. `risk_level_low` is equivalent to `always`. |
+| `risk_level_high`   | Bot protection is required when the risk level obtained by risk assessment is high. If risk assessment is not enabled, then it means `always`. If risk assessment is service unavailable, then it means `always`. There is no `risk_level_low` because risk level is always low, medium, or high.                                                        |
+
 
 ### authgear.secrets.yaml
 
@@ -142,11 +170,7 @@ bot_protection:
       type: recaptchav3
 ```
 
-- `bot_protection.mode`: When bot protection is required.
-  - `never`: Bot protection is never required. It is the default.
-  - `always`: Bot protection is always required. Risk level is ignored.
-  - `risk_level_medium`: Bot protection is required when the risk level obtained by risk assessment is medium or above. If risk assessment is not enabled, then it means `always`. If risk assessment is service unavailable, then it means `always`. There is no `risk_level_low` because risk level is always low, medium, or high. `risk_level_low` is equivalent to `always`.
-  - `risk_level_high`: Bot protection is required when the risk level obtained by risk assessment is high. If risk assessment is not enabled, then it means `always`. If risk assessment is service unavailable, then it means `always`. There is no `risk_level_low` because risk level is always low, medium, or high. `risk_level_low` is equivalent to `always`.
+- `bot_protection.mode`: When bot protection is required. See [Risk level `mode`](#risk-level-mode).
 - `bot_protection.fail_open`: If it is true, then if the challenge-based provider is service unavailable, access is granted. It is false by default.
 - `bot_protection.provider.type`: If `mode` is not `never`, then it is required. Specify the challenge-based provider to be used in this branch.
 - `bot_protection.risk_assessment.enabled`: Whether risk assessment is enabled.
@@ -182,10 +206,17 @@ Given `bot_protection.risk_assessment.enabled=true`,
 
 Given `bot_protection.enabled=true`,
 
-1. All the branches of the first step (that is, the `identify` step, or the `authenticate` step in reauth flow) has `bot_protection.mode=always`.
-2. The configured provider is used as `bot_protection.provider.type`
+1. All `login_id` branches of the `identify` step of (`signup`, `login`, `signup_login`, `promote` flows) has `bot_protection.mode` = `bot_protection.authentication_flow.signup_or_login.mode`.
+2. All branches of `identify` step of `account_recovery` has `bot_protection.mode` = `bot_protection.authentication_flow.account_recovery.mode`.
+3. All `password` branches has `bot_protection.mode` = `bot_protection.authenticator.password.mode`.
+4. All `oob_otp_email` branches has `bot_protection.mode` = `bot_protection.authenticator.oob_otp_email.mode`.
+5. All `oob_otp_sms` branches has `bot_protection.mode` = `bot_protection.authenticator.oob_otp_sms.mode`.
 
-In terms of UX, when bot protection is enabled and configured, every generated flow requires bot protection at the beginning of the flow.
+
+
+In terms of UX, when bot protection is enabled and configured, every generated flow requires bot protection based on 2 configurations:
+- `bot_protection.authentication_flow`
+- `bot_protection.authenticator`
 
 ### Bot protection in Authentication Flow API
 
