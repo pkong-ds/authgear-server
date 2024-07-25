@@ -1,7 +1,7 @@
 # Bot protection
 
 - [Bot protection](#bot-protection)
-  * [Old configuration](#old-configuration)
+  * [Old Configuration](#old-configuration)
   * [New Configuration](#new-configuration)
     + [authgear.yaml](#authgearyaml)
     + [authgear.secrets.yaml](#authgearsecretsyaml)
