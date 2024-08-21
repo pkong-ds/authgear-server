@@ -206,6 +206,10 @@ func (c *Client) makeRequest(maybeOriginalRequest *http.Request, endpoint *url.U
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Length", strconv.Itoa(buf.Len()))
 
+	for _, cookie := range c.HTTPClient.Jar.Cookies(endpoint) {
+		req.AddCookie(cookie)
+	}
+
 	if maybeOriginalRequest != nil {
 		for _, c := range maybeOriginalRequest.Cookies() {
 			req.AddCookie(c)
