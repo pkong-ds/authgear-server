@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"strconv"
@@ -46,7 +47,13 @@ func NewClient(ctx context.Context, mainListenAddr string, adminListenAddr strin
 	adminEndpointURL.Host = fmt.Sprintf("127.0.0.1:%v", adminEndpointURL.Port())
 
 	// Prepare HTTP clients.
-	var httpClient = &http.Client{}
+	httpCookieJar, err := cookiejar.New(nil)
+	if err != nil {
+		panic(err)
+	}
+	var httpClient = &http.Client{
+		Jar: httpCookieJar,
+	}
 	var oauthClient = &http.Client{}
 
 	// Use go test -timeout instead of setting timeout here.
