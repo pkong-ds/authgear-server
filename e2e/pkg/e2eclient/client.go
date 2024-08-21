@@ -225,14 +225,16 @@ func (c *Client) doFlowRequest(maybeResponseWriter http.ResponseWriter, r *http.
 		return nil, err
 	}
 	defer resp.Body.Close()
-
+	respCookies := resp.Cookies()
 	// Forward cookies.
 	if maybeResponseWriter != nil {
-		for _, c := range resp.Cookies() {
-			httputil.UpdateCookie(maybeResponseWriter, c)
+		for _, cookie := range respCookies {
+			httputil.UpdateCookie(maybeResponseWriter, cookie)
 		}
 	}
 
+	// Store cookies in test runner client
+	c.setHTTPClientJarCookies(r.URL, respCookies)
 	var httpResponse HTTPResponse
 	err = json.NewDecoder(resp.Body).Decode(&httpResponse)
 	if err != nil {
@@ -281,4 +283,8 @@ func (c *Client) GraphQLAPI(w http.ResponseWriter, r *http.Request, appID string
 	}
 
 	return &graphQLResponse, nil
+}
+
+func (c *Client) setHTTPClientJarCookies(url *url.URL, cookies []*http.Cookie) {
+	c.HTTPClient.Jar.SetCookies(url, cookies)
 }
